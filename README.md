@@ -1,4 +1,4 @@
-# 💡 Impact Team Technical Assessment Fall 2026 💡
+# 🏎️ Impact Team Technical Assessment Fall 2026 🏎️
 
 <img width="1365" height="512" alt="f1datalogo" src="https://github.com/user-attachments/assets/1c89f0e6-50c3-4efd-9366-3f85bee7f108" />
 
