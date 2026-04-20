@@ -162,6 +162,10 @@ function App() {
 
       setAllAccumulatedResults(allResults)
       setCurrentPageResults(allResults)
+      console.log(`✓ State updated:`)
+      console.log(`  allAccumulatedResults.length = ${allResults.length}`)
+      console.log(`  currentPageResults.length = ${allResults.length}`)
+      console.log(`  First result:`, allResults[0])
       setLoading(false)
     } catch (err) {
       console.error('Error fetching data:', err)

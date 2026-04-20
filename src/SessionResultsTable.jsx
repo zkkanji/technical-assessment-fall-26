@@ -1,4 +1,6 @@
 function SessionResultsTable({ results }) {
+  console.log(`SessionResultsTable rendered with ${results?.length || 0} results`)
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)
