@@ -26,8 +26,7 @@ function App() {
     setSearchQuery('')
     setAllAccumulatedResults([])
     setCurrentPageResults([])
-    setNextSessionOffset(0)
-    setHasMoreSessions(true)
+    setCurrentPage(0)
     setLoading(true)
     setError(null)
 
