@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import SessionResultsTable from './SessionResultsTable'
 import SessionResultsChart from './SessionResultsChart'
-import PaginationButton from './PaginationButton'
 import ferrariLogo from './assets/ferrari.png'
 
 function App() {
@@ -10,25 +9,17 @@ function App() {
   const [currentPageResults, setCurrentPageResults] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(0)
   const [nextSessionOffset, setNextSessionOffset] = useState(0)
   const [hasMoreSessions, setHasMoreSessions] = useState(true)
-  const [totalPages, setTotalPages] = useState(0)
   const [selectedYear, setSelectedYear] = useState(2023)
   const [searchQuery, setSearchQuery] = useState('')
-  const resultsPerPage = 20
   const sessionsPerFetch = 20
 
   useEffect(() => {
-    handlePageChange(currentPage)
-  }, [currentPage])
-
-  useEffect(() => {
-    console.log(`Year changed, resetting and loading data for year ${selectedYear}`)
-    handlePageChange(0)
+    handleYearChange(selectedYear)
   }, [selectedYear])
 
-  const handleYearChange = (year) => {
+  const handleYearChange = async (year) => {
     console.log(`Year changed to ${year}`)
     setSelectedYear(year)
     setSearchQuery('')
@@ -36,132 +27,52 @@ function App() {
     setCurrentPageResults([])
     setNextSessionOffset(0)
     setHasMoreSessions(true)
-    setTotalPages(0)
+    setLoading(true)
+    setError(null)
+
+    // Fetch ALL Ferrari results for this year
+    await fetchAllResultsForYear(year)
   }
 
   const handleSearchChange = (query) => {
     console.log(`Search query changed to: ${query}`)
     setSearchQuery(query)
-    setCurrentPage(0)
 
     if (query.trim() === '') {
       // No search, show all results
-      const pages = Math.ceil(allAccumulatedResults.length / resultsPerPage)
-      setTotalPages(pages)
-      setCurrentPageResults(allAccumulatedResults.slice(0, resultsPerPage))
+      setCurrentPageResults(allAccumulatedResults)
     } else {
       // Filter results by driver name (case-insensitive)
       const filtered = allAccumulatedResults.filter(result =>
         result.driver_name.toLowerCase().includes(query.toLowerCase())
       )
       console.log(`Filtered results: ${filtered.length} matches`)
-
-      const pages = Math.ceil(filtered.length / resultsPerPage)
-      setTotalPages(pages)
-      setCurrentPageResults(filtered.slice(0, resultsPerPage))
+      setCurrentPageResults(filtered)
     }
   }
 
-  const getDisplayResults = () => {
-    if (searchQuery.trim() === '') {
-      return allAccumulatedResults
-    }
-    return allAccumulatedResults.filter(result =>
-      result.driver_name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }
-
-  const handlePageChange = async (page) => {
-    console.log(`handlePageChange called with page ${page}`)
-    console.log(`Current state: allAccumulatedResults.length=${allAccumulatedResults.length}, totalPages=${totalPages}, hasMoreSessions=${hasMoreSessions}`)
-
-    const displayResults = getDisplayResults()
-    const startIdx = page * resultsPerPage
-    const endIdx = startIdx + resultsPerPage
-    console.log(`Need results from ${startIdx} to ${endIdx}`)
-
-    // If we already have enough filtered results for this page, just display them
-    if (endIdx <= displayResults.length) {
-      console.log(`Results already available, displaying from index ${startIdx} to ${endIdx}`)
-      setCurrentPageResults(displayResults.slice(startIdx, endIdx))
-      setLoading(false)
-      return
-    }
-
-    console.log(`Need to fetch more results (have ${displayResults.length}, need ${endIdx})`)
-    // Otherwise, fetch more sessions until we have enough results
-    await fetchUntilEnoughResults(allAccumulatedResults, startIdx, endIdx)
-  }
-
-  const fetchUntilEnoughResults = async (existingResults, startIdx, endIdx) => {
+  const fetchAllResultsForYear = async (year) => {
     try {
       setLoading(true)
       setError(null)
-      let accumulated = [...existingResults]
-      let currentOffset = nextSessionOffset
-      let stillHasMore = hasMoreSessions
 
-      console.log(`Fetching until we have ${endIdx} results (currently ${accumulated.length})`)
-
-      // Keep fetching sessions until we have enough results for this page
-      while (accumulated.length < endIdx && stillHasMore) {
-        const fetchResult = await fetchMoreSessions(currentOffset)
-        const { results: newResults, hasMoreSessions: moreAvailable } = fetchResult
-
-        stillHasMore = moreAvailable
-        console.log(`Has more sessions available: ${stillHasMore}`)
-
-        if (newResults.length === 0 && !stillHasMore) {
-          console.log('No more results and no more sessions')
-          break
-        }
-
-        accumulated = [...accumulated, ...newResults]
-        currentOffset += sessionsPerFetch
-        console.log(`Accumulated ${accumulated.length} results so far`)
-      }
-
-      // Update state
-      setNextSessionOffset(currentOffset)
-      setHasMoreSessions(stillHasMore)
-
-      setAllAccumulatedResults(accumulated)
-      setCurrentPageResults(accumulated.slice(startIdx, endIdx))
-      const pages = Math.ceil(accumulated.length / resultsPerPage)
-      setTotalPages(pages)
-      console.log(`Set total pages to ${pages}, hasMoreSessions: ${stillHasMore}`)
-    } catch (err) {
-      setError(err.message)
-      console.error('Error fetching data:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchMoreSessions = async (offset) => {
-    try {
-      // STEP 1: Fetch ALL sessions for the selected year from backend (cached)
-      const sessionsUrl = `http://localhost:3001/api/openf1/sessions?year=${selectedYear}`
-      console.log(`Fetching ALL sessions for year ${selectedYear} from backend...`)
+      // STEP 1: Fetch ALL sessions for the selected year
+      const sessionsUrl = `http://localhost:3001/api/openf1/sessions?year=${year}`
+      console.log(`Fetching ALL sessions for year ${year}...`)
 
       const sessionsResponse = await fetch(sessionsUrl)
       if (!sessionsResponse.ok) throw new Error('Failed to fetch sessions')
 
       const allSessionsData = await sessionsResponse.json()
-      console.log(`Got ${allSessionsData.length} TOTAL sessions for year ${selectedYear}`)
-
-      // Apply offset and limit for pagination on the sessions (client-side pagination)
-      const paginatedSessions = allSessionsData.slice(offset, offset + sessionsPerFetch)
-      console.log(`Processing batch: offset ${offset}, got ${paginatedSessions.length} sessions from the full list`)
+      console.log(`Got ${allSessionsData.length} total sessions for year ${year}`)
 
       const allResults = []
 
       // Process each session
-      for (const session of paginatedSessions) {
+      for (const session of allSessionsData) {
         try {
-          // STEP 2: Fetch Ferrari drivers for this session from backend
+          // STEP 2: Fetch Ferrari drivers for this session
           const driversUrl = `http://localhost:3001/api/openf1/drivers?session_key=${session.session_key}&meeting_key=${session.meeting_key}&team_name=Ferrari`
-          console.log(`Fetching drivers for session ${session.session_key}...`)
 
           const driversResponse = await fetch(driversUrl)
           if (!driversResponse.ok) {
@@ -170,19 +81,16 @@ function App() {
           }
 
           const drivers = await driversResponse.json()
-          console.log(`Session ${session.session_key}: ${drivers.length} Ferrari drivers`)
 
           // If no Ferrari drivers, skip this session
           if (drivers.length === 0) {
-            console.log(`No Ferrari drivers for session ${session.session_key}, skipping...`)
             continue
           }
 
-          // STEP 3: Fetch session result for each driver from backend
+          // STEP 3: Fetch session result for each driver
           for (const driver of drivers) {
             try {
               const resultUrl = `http://localhost:3001/api/openf1/session-result?session_key=${session.session_key}&meeting_key=${session.meeting_key}&driver_number=${driver.driver_number}`
-              console.log(`Fetching result for driver ${driver.full_name}...`)
 
               const resultResponse = await fetch(resultUrl)
               if (!resultResponse.ok) {
@@ -205,7 +113,6 @@ function App() {
                   session_key: session.session_key,
                   meeting_key: session.meeting_key
                 })
-                console.log(`Added result for ${driver.full_name}: Position ${resultData.position}`)
               }
             } catch (err) {
               console.error(`Error fetching result for driver ${driver.driver_number}:`, err)
@@ -218,48 +125,16 @@ function App() {
         }
       }
 
-      console.log(`Fetched ${allResults.length} results from batch at offset ${offset}`)
-      console.log(`Total sessions in year: ${allSessionsData.length} | Current batch had: ${paginatedSessions.length} sessions`)
+      console.log(`Total Ferrari results for year ${year}: ${allResults.length}`)
 
-      // Check if there are more sessions: if we got a full batch, there might be more
-      const hasMore = offset + sessionsPerFetch < allSessionsData.length
-
-      console.log(`Has more sessions: ${hasMore} (offset: ${offset}, total: ${allSessionsData.length}, batch size: ${sessionsPerFetch})`)
-
-      return {
-        results: allResults,
-        hasMoreSessions: hasMore
-      }
+      setAllAccumulatedResults(allResults)
+      setCurrentPageResults(allResults)
+      setLoading(false)
     } catch (err) {
       console.error('Error fetching data:', err)
-      throw err
+      setError(err.message)
+      setLoading(false)
     }
-  }
-
-  const handleNextPage = async () => {
-    console.log(`Next button clicked. Current page: ${currentPage}`)
-
-    const nextPage = currentPage + 1
-    setCurrentPage(nextPage)
-
-    // Calculate what results we need for this page
-    const startIdx = nextPage * resultsPerPage
-    const endIdx = startIdx + resultsPerPage
-
-    console.log(`Need results from index ${startIdx} to ${endIdx}`)
-
-    // Use the same fetching logic as initial load - fetch until we have enough results
-    await fetchUntilEnoughResults(allAccumulatedResults, startIdx, endIdx)
-  }
-
-  const handlePreviousPage = () => {
-    console.log(`Previous button clicked. Current page: ${currentPage}`)
-    setCurrentPage(prev => Math.max(0, prev - 1))
-  }
-
-  const handleFirstPage = () => {
-    console.log('First button clicked')
-    setCurrentPage(0)
   }
 
   return (
@@ -324,30 +199,6 @@ function App() {
 
           <div className="chart-wrapper">
             <SessionResultsChart results={currentPageResults} />
-          </div>
-
-          <div className="pagination-controls">
-            <PaginationButton
-              onClick={handleFirstPage}
-              disabled={currentPage === 0}
-            >
-              ⏮ First
-            </PaginationButton>
-            <PaginationButton
-              onClick={handlePreviousPage}
-              disabled={currentPage === 0}
-            >
-              ← Previous
-            </PaginationButton>
-            <span className="pagination-info">
-              Page {currentPage + 1} {totalPages > 0 ? `of ${totalPages}` : ''}
-            </span>
-            <PaginationButton
-              onClick={handleNextPage}
-              disabled={currentPage > 0 && currentPageResults.length < resultsPerPage && !hasMoreSessions}
-            >
-              Next →
-            </PaginationButton>
           </div>
         </>
       )}
