@@ -9,11 +9,11 @@
 
 ## Core Requirements
 Please check off which features you have implemented:
-- [ ] Built as a Single Page Application (SPA) without needing browser reloads.
-- [ ] An interesting and beautiful frontend design with a catchy title, apt description, and cool fonts/colors that looks good on any screen size.
-- [ ] Successfully fetches and renders data from an external F1 API (e.g., Ergast, OpenF1).
-- [ ] Displays F1 data in a table that is capped at 20 rows per page.
-- [ ] Table includes functional Next/Previous arrows to navigate the dataset.
+- [Check ] Built as a Single Page Application (SPA) without needing browser reloads.
+- [Check ] An interesting and beautiful frontend design with a catchy title, apt description, and cool fonts/colors that looks good on any screen size.
+- [ Check] Successfully fetches and renders data from an external F1 API (e.g., Ergast, OpenF1).
+- [Check ] Displays F1 data in a table that is capped at 20 rows per page.
+- [Check ] Table includes functional Next/Previous arrows to navigate the dataset.
 - [ ] Includes a search bar that filters the dataset based on simple text input.
 - [ ] Includes at least one chart or graph (using Chart.js, Recharts, D3, etc.) that visualizes the pulled data.
 - [ ] Features an animated background and smooth transitions/animations for UI elements.
