@@ -91,6 +91,18 @@
     @apply text-xl text-white font-light tracking-wide;
   }
 
+  .header-description {
+    @apply text-base text-gray-300 font-light tracking-normal mt-2 mb-1;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .header-credit {
+    @apply text-sm text-gray-400 font-light tracking-wide mt-4 mb-4;
+    font-style: italic;
+  }
+
   .header-controls {
     display: flex;
     align-items: center;

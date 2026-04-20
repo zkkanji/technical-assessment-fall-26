@@ -143,7 +143,8 @@ function App() {
           <img src={ferrariLogo} alt="Ferrari Logo" className="ferrari-logo" />
           <h1>Ferrari Dashboard</h1>
         </div>
-        <p>Session Results</p>
+        <p className="header-description">Explore Ferrari's Formula 1 session results across multiple seasons. View detailed race data, driver performance, and historical statistics.</p>
+        <p className="header-credit">Made by Zain Kanji</p>
         <div className="header-controls">
           <div className="year-selector">
             <label htmlFor="year-select">Year: </label>
