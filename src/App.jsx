@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import SessionResultsTable from './SessionResultsTable'
 import SessionResultsChart from './SessionResultsChart'
+import PaginationButton from './PaginationButton'
 import ferrariLogo from './assets/ferrari.png'
 
 function App() {
@@ -9,11 +10,10 @@ function App() {
   const [currentPageResults, setCurrentPageResults] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [nextSessionOffset, setNextSessionOffset] = useState(0)
-  const [hasMoreSessions, setHasMoreSessions] = useState(true)
+  const [currentPage, setCurrentPage] = useState(0)
   const [selectedYear, setSelectedYear] = useState(2023)
   const [searchQuery, setSearchQuery] = useState('')
-  const sessionsPerFetch = 20
+  const resultsPerPage = 20
 
   useEffect(() => {
     // Load initial year on component mount
@@ -38,24 +38,62 @@ function App() {
   const handleSearchChange = (query) => {
     console.log(`Search query changed to: ${query}`)
     setSearchQuery(query)
+    setCurrentPage(0)
 
     if (query.trim() === '') {
-      // No search, show all results
-      setCurrentPageResults(allAccumulatedResults)
+      // No search, show first page of all results
+      setCurrentPageResults(allAccumulatedResults.slice(0, resultsPerPage))
     } else {
       // Filter results by driver name (case-insensitive)
       const filtered = allAccumulatedResults.filter(result =>
         result.driver_name.toLowerCase().includes(query.toLowerCase())
       )
       console.log(`Filtered results: ${filtered.length} matches`)
-      setCurrentPageResults(filtered)
+      setCurrentPageResults(filtered.slice(0, resultsPerPage))
     }
+  }
+
+  const getDisplayResults = () => {
+    if (searchQuery.trim() === '') {
+      return allAccumulatedResults
+    }
+    return allAccumulatedResults.filter(result =>
+      result.driver_name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }
+
+  const handlePageChange = (page) => {
+    console.log(`Going to page ${page}`)
+    const displayResults = getDisplayResults()
+    const startIdx = page * resultsPerPage
+    const endIdx = startIdx + resultsPerPage
+    setCurrentPageResults(displayResults.slice(startIdx, endIdx))
+    setCurrentPage(page)
+  }
+
+  const handleNextPage = () => {
+    const displayResults = getDisplayResults()
+    const maxPage = Math.ceil(displayResults.length / resultsPerPage) - 1
+    if (currentPage < maxPage) {
+      handlePageChange(currentPage + 1)
+    }
+  }
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      handlePageChange(currentPage - 1)
+    }
+  }
+
+  const handleFirstPage = () => {
+    handlePageChange(0)
   }
 
   const fetchAllResultsForYear = async (year) => {
     try {
       setLoading(true)
       setError(null)
+      setCurrentPage(0)
 
       console.log(`=== FETCHING FERRARI RESULTS FOR YEAR ${year} ===`)
 
@@ -88,10 +126,9 @@ function App() {
       }
 
       console.log(`✓ Got ${results.length} results!`)
-      console.log(`First result:`, results[0])
 
       setAllAccumulatedResults(results)
-      setCurrentPageResults(results)
+      setCurrentPageResults(results.slice(0, resultsPerPage))
       setLoading(false)
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -162,6 +199,30 @@ function App() {
 
           <div className="chart-wrapper">
             <SessionResultsChart results={currentPageResults} />
+          </div>
+
+          <div className="pagination-controls">
+            <PaginationButton
+              onClick={handleFirstPage}
+              disabled={currentPage === 0}
+            >
+              ⏮ First
+            </PaginationButton>
+            <PaginationButton
+              onClick={handlePreviousPage}
+              disabled={currentPage === 0}
+            >
+              ← Previous
+            </PaginationButton>
+            <span className="pagination-info">
+              Page {currentPage + 1} of {Math.ceil(getDisplayResults().length / resultsPerPage) || 1}
+            </span>
+            <PaginationButton
+              onClick={handleNextPage}
+              disabled={currentPage >= Math.ceil(getDisplayResults().length / resultsPerPage) - 1}
+            >
+              Next →
+            </PaginationButton>
           </div>
         </>
       )}
