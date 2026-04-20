@@ -237,40 +237,19 @@ function App() {
   }
 
   const handleNextPage = async () => {
-    console.log(`Next button clicked. Current page: ${currentPage}, Total pages: ${totalPages}`)
+    console.log(`Next button clicked. Current page: ${currentPage}`)
 
-    // Move to next page
     const nextPage = currentPage + 1
     setCurrentPage(nextPage)
 
-    // Proactively fetch the next batch of sessions
-    console.log(`Attempting to fetch next batch. nextSessionOffset: ${nextSessionOffset}, hasMoreSessions: ${hasMoreSessions}`)
+    // Calculate what results we need for this page
+    const startIdx = nextPage * resultsPerPage
+    const endIdx = startIdx + resultsPerPage
 
-    try {
-      setLoading(true)
-      const fetchResult = await fetchMoreSessions(nextSessionOffset)
-      const { results: newResults, hasMoreSessions: moreAvailable } = fetchResult
+    console.log(`Need results from index ${startIdx} to ${endIdx}`)
 
-      console.log(`Fetch returned ${newResults.length} new results. More available: ${moreAvailable}`)
-
-      if (newResults.length > 0) {
-        // Update state with newly fetched results
-        setAllAccumulatedResults(prev => [...prev, ...newResults])
-        setNextSessionOffset(prev => prev + sessionsPerFetch)
-        setHasMoreSessions(moreAvailable)
-
-        console.log(`Updated accumulated results. Total now: ${allAccumulatedResults.length + newResults.length}`)
-      } else {
-        // No more results from this fetch
-        setHasMoreSessions(false)
-        console.log(`No more results in next batch. Stopping fetches.`)
-      }
-    } catch (err) {
-      console.error('Error fetching next batch:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+    // Use the same fetching logic as initial load - fetch until we have enough results
+    await fetchUntilEnoughResults(allAccumulatedResults, startIdx, endIdx)
   }
 
   const handlePreviousPage = () => {
