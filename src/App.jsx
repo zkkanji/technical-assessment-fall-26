@@ -163,8 +163,11 @@ function App() {
                 continue
               }
 
+              console.log(`  → Driver ${driver.full_name}: Fetched result:`, result)
+
               if (result && result.length > 0) {
                 const resultData = result[0]
+                console.log(`    Data found - Position: ${resultData.position}, Laps: ${resultData.number_of_laps}`)
                 allResults.push({
                   session_type: session.session_type,
                   circuit_short_name: session.circuit_short_name,
@@ -176,7 +179,9 @@ function App() {
                   session_key: session.session_key,
                   meeting_key: session.meeting_key
                 })
-                console.log(`  ✓ Driver ${driver.full_name}: Position ${resultData.position}, Laps ${resultData.number_of_laps}`)
+                console.log(`  ✓ Driver ${driver.full_name}: Added to results (total: ${allResults.length})`)
+              } else {
+                console.log(`    No data in result array (length: ${result?.length || 0})`)
               }
             } catch (err) {
               console.error(`  ✗ Unexpected error for driver ${driver.driver_number}:`, err.message)
