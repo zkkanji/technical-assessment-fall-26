@@ -148,11 +148,11 @@ function App() {
       if (!sessionsResponse.ok) throw new Error('Failed to fetch sessions')
 
       const allSessionsData = await sessionsResponse.json()
-      console.log(`Got ${allSessionsData.length} total sessions for year ${selectedYear}`)
+      console.log(`Got ${allSessionsData.length} TOTAL sessions for year ${selectedYear}`)
 
-      // Apply offset and limit for pagination on the sessions
+      // Apply offset and limit for pagination on the sessions (client-side pagination)
       const paginatedSessions = allSessionsData.slice(offset, offset + sessionsPerFetch)
-      console.log(`Processing ${paginatedSessions.length} sessions from offset ${offset}`)
+      console.log(`Processing batch: offset ${offset}, got ${paginatedSessions.length} sessions from the full list`)
 
       const allResults = []
 
@@ -218,11 +218,13 @@ function App() {
         }
       }
 
-      console.log(`Fetched ${allResults.length} total results from current batch`)
-      console.log(`Total sessions available: ${allSessionsData.length}, Offset: ${offset}, Sessions in this batch: ${paginatedSessions.length}`)
+      console.log(`Fetched ${allResults.length} results from batch at offset ${offset}`)
+      console.log(`Total sessions in year: ${allSessionsData.length} | Current batch had: ${paginatedSessions.length} sessions`)
 
       // Check if there are more sessions: if we got a full batch, there might be more
-      const hasMore = paginatedSessions.length === sessionsPerFetch
+      const hasMore = offset + sessionsPerFetch < allSessionsData.length
+
+      console.log(`Has more sessions: ${hasMore} (offset: ${offset}, total: ${allSessionsData.length}, batch size: ${sessionsPerFetch})`)
 
       return {
         results: allResults,

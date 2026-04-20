@@ -9,8 +9,6 @@ const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 router.get('/sessions', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 20
-    const offset = parseInt(req.query.offset) || 0
     const year = req.query.year ? parseInt(req.query.year) : null
 
     const cacheKey = year ? `year_${year}` : 'all_years'
@@ -36,10 +34,8 @@ router.get('/sessions', async (req, res) => {
       console.log(`Cached ${sessionsCacheByYear[cacheKey].length} sessions for ${year ? `year ${year}` : 'all years'}`)
     }
 
-    // Paginate the cached results
-    const paginatedResults = sessionsCacheByYear[cacheKey].slice(offset, offset + limit)
-
-    res.json(paginatedResults)
+    // Return ALL cached sessions for the year (no pagination on backend)
+    res.json(sessionsCacheByYear[cacheKey])
   } catch (error) {
     console.error('Error fetching sessions:', error)
     res.status(500).json({ error: 'Failed to fetch sessions', details: error.message })
