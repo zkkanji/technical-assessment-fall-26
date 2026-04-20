@@ -77,6 +77,10 @@ function App() {
       const allResults = []
       let sessionsWithFerrari = 0
       let sessionsProcessed = 0
+      let driversFetched = 0
+      let driversFailed = 0
+      let resultsFetched = 0
+      let resultsFailed = 0
 
       // Process each session
       for (const session of allSessionsData) {
@@ -91,13 +95,30 @@ function App() {
           // STEP 2: Fetch Ferrari drivers for this session
           const driversUrl = `http://localhost:3001/api/openf1/drivers?session_key=${session.session_key}&meeting_key=${session.meeting_key}&team_name=Ferrari`
 
-          const driversResponse = await fetch(driversUrl)
-          if (!driversResponse.ok) {
-            console.log(`Session ${sessionsProcessed} (${session.session_key}): No drivers response`)
+          let driversResponse
+          try {
+            driversResponse = await fetch(driversUrl)
+          } catch (fetchErr) {
+            console.error(`Session ${sessionsProcessed}: Network error fetching drivers:`, fetchErr.message)
+            driversFailed++
             continue
           }
 
-          const drivers = await driversResponse.json()
+          if (!driversResponse.ok) {
+            console.log(`Session ${sessionsProcessed} (${session.session_key}): Drivers API returned ${driversResponse.status}`)
+            driversFailed++
+            continue
+          }
+
+          let drivers
+          try {
+            drivers = await driversResponse.json()
+            driversFetched++
+          } catch (parseErr) {
+            console.error(`Session ${sessionsProcessed}: Error parsing drivers JSON:`, parseErr.message)
+            driversFailed++
+            continue
+          }
 
           // If no Ferrari drivers, skip this session
           if (!drivers || drivers.length === 0) {
@@ -117,13 +138,30 @@ function App() {
             try {
               const resultUrl = `http://localhost:3001/api/openf1/session-result?session_key=${session.session_key}&meeting_key=${session.meeting_key}&driver_number=${driver.driver_number}`
 
-              const resultResponse = await fetch(resultUrl)
-              if (!resultResponse.ok) {
-                console.log(`  → Driver ${driver.full_name} (${driver.driver_number}): No result found`)
+              let resultResponse
+              try {
+                resultResponse = await fetch(resultUrl)
+              } catch (fetchErr) {
+                console.error(`  → Driver ${driver.full_name}: Network error:`, fetchErr.message)
+                resultsFailed++
                 continue
               }
 
-              const result = await resultResponse.json()
+              if (!resultResponse.ok) {
+                console.log(`  → Driver ${driver.full_name} (${driver.driver_number}): Result API returned ${resultResponse.status}`)
+                resultsFailed++
+                continue
+              }
+
+              let result
+              try {
+                result = await resultResponse.json()
+                resultsFetched++
+              } catch (parseErr) {
+                console.error(`  → Driver ${driver.full_name}: Error parsing result JSON:`, parseErr.message)
+                resultsFailed++
+                continue
+              }
 
               if (result && result.length > 0) {
                 const resultData = result[0]
@@ -141,12 +179,13 @@ function App() {
                 console.log(`  ✓ Driver ${driver.full_name}: Position ${resultData.position}, Laps ${resultData.number_of_laps}`)
               }
             } catch (err) {
-              console.error(`  ✗ Error fetching result for driver ${driver.driver_number}:`, err.message)
+              console.error(`  ✗ Unexpected error for driver ${driver.driver_number}:`, err.message)
+              resultsFailed++
               continue
             }
           }
         } catch (err) {
-          console.error(`Session ${sessionsProcessed}: Error processing session ${session.session_key}:`, err.message)
+          console.error(`Session ${sessionsProcessed}: Unexpected error:`, err.message)
           continue
         }
       }
@@ -154,6 +193,8 @@ function App() {
       console.log(`=== FETCH COMPLETE ===`)
       console.log(`Sessions processed: ${sessionsProcessed}`)
       console.log(`Sessions with Ferrari drivers: ${sessionsWithFerrari}`)
+      console.log(`Drivers fetch attempts: ${driversFetched} success, ${driversFailed} failed`)
+      console.log(`Results fetch attempts: ${resultsFetched} success, ${resultsFailed} failed`)
       console.log(`Total Ferrari results collected: ${allResults.length}`)
 
       if (allResults.length === 0) {
