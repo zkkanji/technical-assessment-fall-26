@@ -59,7 +59,7 @@ function App() {
 
       console.log(`=== FETCHING FERRARI RESULTS FOR YEAR ${year} ===`)
 
-      // Call backend endpoint which handles caching and OpenF1 API
+      // Call backend endpoint
       const url = `http://localhost:3001/api/openf1/ferrari-year/${year}`
       const response = await fetch(url)
 
@@ -67,14 +67,28 @@ function App() {
         throw new Error(`Backend returned ${response.status}`)
       }
 
-      const results = await response.json()
+      let results = await response.json()
 
       console.log(`✓ Received ${results.length} Ferrari results for year ${year}`)
-      console.log(`Results:`, results)
 
-      if (!results || results.length === 0) {
-        setError(`No Ferrari results found for year ${year}`)
+      // If empty, wait and retry (for background fetching)
+      if (results.length === 0) {
+        console.log(`No results yet, waiting for background fetch...`)
+        setCurrentPageResults([])
+        setAllAccumulatedResults([])
+
+        // Retry after 3 seconds
+        setTimeout(() => {
+          console.log(`Retrying fetch for year ${year}...`)
+          fetchAllResultsForYear(year)
+        }, 3000)
+
+        setLoading(false)
+        return
       }
+
+      console.log(`✓ Got ${results.length} results!`)
+      console.log(`First result:`, results[0])
 
       setAllAccumulatedResults(results)
       setCurrentPageResults(results)

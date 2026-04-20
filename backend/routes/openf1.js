@@ -120,9 +120,18 @@ router.get('/ferrari-year/:year', async (req, res) => {
     const year = parseInt(req.params.year)
     console.log(`[FERRARI YEAR] Request for year ${year}`)
 
-    // For now, just fetch from OpenF1 directly and return
-    // (MongoDB caching can be added later)
+    // CHECK MONGODB FIRST
+    try {
+      const cached = await RaceResult.find({ year }).lean()
+      if (cached && cached.length > 0) {
+        console.log(`[FERRARI YEAR] ✓ Found ${cached.length} cached results in MongoDB`)
+        return res.json(cached)
+      }
+    } catch (dbErr) {
+      console.warn(`[FERRARI YEAR] MongoDB check failed: ${dbErr.message}`)
+    }
 
+    console.log(`[FERRARI YEAR] No cache, returning empty and fetching in background`)
     res.json([])
 
     // Fetch in background
@@ -140,7 +149,6 @@ router.get('/ferrari-year/:year', async (req, res) => {
         const allSessions = await sessionsResponse.json()
         console.log(`[BG] Got ${allSessions.length} sessions`)
 
-        let results = []
         let saved = 0
 
         for (const session of allSessions) {
@@ -168,21 +176,7 @@ router.get('/ferrari-year/:year', async (req, res) => {
                 if (!resultArray || resultArray.length === 0) continue
 
                 const resultData = resultArray[0]
-                results.push({
-                  session_key: session.session_key,
-                  meeting_key: session.meeting_key,
-                  session_type: session.session_type,
-                  circuit_short_name: session.circuit_short_name,
-                  date_end: session.date_end,
-                  year: year,
-                  driver_name: driver.full_name,
-                  driver_number: driver.driver_number,
-                  number_of_laps: resultData.number_of_laps,
-                  final_position: resultData.position
-                })
-                saved++
 
-                // Save to MongoDB
                 try {
                   await RaceResult.create({
                     session_key: session.session_key,
@@ -196,26 +190,27 @@ router.get('/ferrari-year/:year', async (req, res) => {
                     number_of_laps: resultData.number_of_laps,
                     final_position: resultData.position
                   })
+                  saved++
                 } catch (dbErr) {
-                  console.warn(`[BG] DB save warning: ${dbErr.message}`)
+                  console.warn(`[BG] DB save error: ${dbErr.message}`)
                 }
               } catch (e) {
-                console.error(`[BG] Driver error: ${e.message}`)
+                // Silent
               }
             }
           } catch (e) {
-            console.error(`[BG] Session error: ${e.message}`)
+            // Silent
           }
         }
 
-        console.log(`[BG] Complete - saved ${saved} results for year ${year}`)
+        console.log(`[BG] ✓ Complete - saved ${saved} results for year ${year}`)
       } catch (err) {
         console.error('[BG] Fatal error:', err.message)
       }
     }, 100)
   } catch (error) {
-    console.error('[FERRARI YEAR] Caught error:', error.message)
-    res.status(500).json({ error: error.message })
+    console.error('[FERRARI YEAR] Error:', error.message)
+    res.json([])
   }
 })
 router.get('/ferrari-results/year/:year', async (req, res) => {
