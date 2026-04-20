@@ -236,9 +236,34 @@ function App() {
     }
   }
 
-  const handleNextPage = () => {
+  const handleNextPage = async () => {
     console.log(`Next button clicked. Current page: ${currentPage}, Total pages: ${totalPages}`)
-    setCurrentPage(prev => prev + 1)
+
+    // Move to next page
+    const nextPage = currentPage + 1
+    setCurrentPage(nextPage)
+
+    // Proactively fetch the next batch of sessions if available
+    if (hasMoreSessions) {
+      console.log(`Proactively fetching next batch at offset ${nextSessionOffset}...`)
+      try {
+        setLoading(true)
+        const fetchResult = await fetchMoreSessions(nextSessionOffset)
+        const { results: newResults, hasMoreSessions: moreAvailable } = fetchResult
+
+        // Update state with newly fetched results
+        setAllAccumulatedResults(prev => [...prev, ...newResults])
+        setNextSessionOffset(prev => prev + sessionsPerFetch)
+        setHasMoreSessions(moreAvailable)
+
+        console.log(`Proactively fetched ${newResults.length} new results. Total now: ${allAccumulatedResults.length + newResults.length}`)
+      } catch (err) {
+        console.error('Error proactively fetching next batch:', err)
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
   }
 
   const handlePreviousPage = () => {
