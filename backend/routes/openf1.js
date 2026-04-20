@@ -51,17 +51,26 @@ router.get('/drivers', async (req, res) => {
       return res.status(400).json({ error: 'meeting_key and session_key required' })
     }
 
+    // Fetch ALL drivers for this session (no team filter)
     const response = await fetch(
-      `https://api.openf1.org/v1/drivers?session_key=${session_key}&meeting_key=${meeting_key}&team_name=Ferrari`
+      `https://api.openf1.org/v1/drivers?session_key=${session_key}&meeting_key=${meeting_key}`
     )
 
     if (!response.ok) {
-      console.warn(`OpenF1 drivers API returned ${response.status} for meeting_key=${meeting_key}, session_key=${session_key}`)
+      console.warn(`OpenF1 drivers API returned ${response.status} for session_key=${session_key}, meeting_key=${meeting_key}`)
       return res.json([])
     }
 
-    const data = await response.json()
-    res.json(data)
+    const allDrivers = await response.json()
+
+    // Filter for Ferrari team on the backend
+    const ferrariDrivers = allDrivers.filter(driver =>
+      driver.team_name && driver.team_name.toLowerCase() === 'ferrari'
+    )
+
+    console.log(`Session ${session_key}: Found ${allDrivers.length} total drivers, ${ferrariDrivers.length} Ferrari drivers`)
+
+    res.json(ferrariDrivers)
   } catch (error) {
     console.error('Error fetching drivers:', error)
     res.status(500).json({ error: 'Failed to fetch drivers', details: error.message })
