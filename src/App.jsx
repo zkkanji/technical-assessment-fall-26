@@ -358,7 +358,7 @@ function App() {
             </span>
             <PaginationButton
               onClick={handleNextPage}
-              disabled={totalPages > 0 && currentPage >= totalPages - 1 && !hasMoreSessions}
+              disabled={currentPage > 0 && currentPageResults.length < resultsPerPage && !hasMoreSessions}
             >
               Next →
             </PaginationButton>
