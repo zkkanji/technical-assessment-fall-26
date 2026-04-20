@@ -243,26 +243,33 @@ function App() {
     const nextPage = currentPage + 1
     setCurrentPage(nextPage)
 
-    // Proactively fetch the next batch of sessions if available
-    if (hasMoreSessions) {
-      console.log(`Proactively fetching next batch at offset ${nextSessionOffset}...`)
-      try {
-        setLoading(true)
-        const fetchResult = await fetchMoreSessions(nextSessionOffset)
-        const { results: newResults, hasMoreSessions: moreAvailable } = fetchResult
+    // Proactively fetch the next batch of sessions
+    console.log(`Attempting to fetch next batch. nextSessionOffset: ${nextSessionOffset}, hasMoreSessions: ${hasMoreSessions}`)
 
+    try {
+      setLoading(true)
+      const fetchResult = await fetchMoreSessions(nextSessionOffset)
+      const { results: newResults, hasMoreSessions: moreAvailable } = fetchResult
+
+      console.log(`Fetch returned ${newResults.length} new results. More available: ${moreAvailable}`)
+
+      if (newResults.length > 0) {
         // Update state with newly fetched results
         setAllAccumulatedResults(prev => [...prev, ...newResults])
         setNextSessionOffset(prev => prev + sessionsPerFetch)
         setHasMoreSessions(moreAvailable)
 
-        console.log(`Proactively fetched ${newResults.length} new results. Total now: ${allAccumulatedResults.length + newResults.length}`)
-      } catch (err) {
-        console.error('Error proactively fetching next batch:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
+        console.log(`Updated accumulated results. Total now: ${allAccumulatedResults.length + newResults.length}`)
+      } else {
+        // No more results from this fetch
+        setHasMoreSessions(false)
+        console.log(`No more results in next batch. Stopping fetches.`)
       }
+    } catch (err) {
+      console.error('Error fetching next batch:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -337,7 +344,7 @@ function App() {
           </div>
 
           <div className="chart-wrapper">
-            <SessionResultsChart results={allAccumulatedResults} />
+            <SessionResultsChart results={currentPageResults} />
           </div>
 
           <div className="pagination-controls">
