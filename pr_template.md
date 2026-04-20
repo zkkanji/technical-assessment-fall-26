@@ -15,7 +15,7 @@ Please check off which features you have implemented:
 - [Check ] Displays F1 data in a table that is capped at 20 rows per page.
 - [Check ] Table includes functional Next/Previous arrows to navigate the dataset.
 - [ Check] Includes a search bar that filters the dataset based on simple text input.
-- [ ] Includes at least one chart or graph (using Chart.js, Recharts, D3, etc.) that visualizes the pulled data.
+- [Check ] Includes at least one chart or graph (using Chart.js, Recharts, D3, etc.) that visualizes the pulled data.
 - [check ] Features an animated background and smooth transitions/animations for UI elements.
 - [ ] Deployed the application using free deployment tools.
 
@@ -31,8 +31,8 @@ Please check off which features you have implemented:
 ## Written Portion
 1. **How did the project go? What parts of it did you most enjoy / find yourself good at?**
 
-[answer here]
+The project was challenging to say the least. I think I underestimated the time management but it was nice getting to see what it is like to have full stack experience and the stress and troubleshooting which goes into it. API management was definetely a challenge to say the least however I got to learn a lot from it and I am a much better developer now because of it.
 
 2. **Was this technical assessment what you expected? If you had another two weeks to work on it, what would you add or change?**
 
-[answer here]
+This assesment is what I expected and it was a good challenge to say the least. I learned a lot about how to manage API queries and how to set up a good logic flow to not overload on API requests but also pull only necessary data. If I had two more weeks I would add links to the drivers own sites and also maybe more interactive elements such as videos or simulative components to see what it's like to be a ferrari driver just from your web browser.
