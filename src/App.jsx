@@ -16,8 +16,9 @@ function App() {
   const sessionsPerFetch = 20
 
   useEffect(() => {
+    // Load initial year on component mount
     handleYearChange(selectedYear)
-  }, [selectedYear])
+  }, []) // Only on mount, not on selectedYear change
 
   const handleYearChange = async (year) => {
     console.log(`Year changed to ${year}`)
