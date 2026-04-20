@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import SessionResultsTable from './SessionResultsTable'
+import SessionResultsChart from './SessionResultsChart'
 import PaginationButton from './PaginationButton'
 import ferrariLogo from './assets/ferrari.png'
 
@@ -306,6 +307,10 @@ function App() {
         <>
           <div className="data-container">
             <SessionResultsTable results={currentPageResults} />
+          </div>
+
+          <div className="chart-wrapper">
+            <SessionResultsChart results={allAccumulatedResults} />
           </div>
 
           <div className="pagination-controls">
