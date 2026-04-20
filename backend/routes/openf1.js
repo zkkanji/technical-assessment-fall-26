@@ -118,36 +118,49 @@ router.get('/session-result', async (req, res) => {
 router.get('/ferrari-year/:year', async (req, res) => {
   try {
     const year = parseInt(req.params.year)
+    console.log(`[FERRARI YEAR] Request for year ${year}`)
 
     // Check if we have cached results in MongoDB
-    const cachedResults = await RaceResult.find({ year })
+    const cachedResults = await RaceResult.find({ year }).timeout(5000)
     if (cachedResults && cachedResults.length > 0) {
       console.log(`[FERRARI YEAR] Found ${cachedResults.length} cached results for year ${year}`)
       return res.json(cachedResults)
     }
 
     console.log(`[FERRARI YEAR] No cached results for ${year}, fetching from OpenF1...`)
+    res.json([]) // Return empty array if no cache, don't block waiting for OpenF1
+
+    // Fetch and cache in background
+    setTimeout(() => {
+      fetchAndCacheYear(year)
+    }, 0)
+  } catch (error) {
+    console.error('[FERRARI YEAR] Error:', error.message)
+    res.status(500).json({ error: 'Failed to fetch Ferrari results' })
+  }
+})
+
+// Background function to fetch and cache
+async function fetchAndCacheYear(year) {
+  try {
+    console.log(`[BG] Fetching year ${year} from OpenF1...`)
 
     // Fetch all sessions for the year
     const sessionsUrl = `https://api.openf1.org/v1/sessions?year=${year}`
     const sessionsResponse = await fetch(sessionsUrl)
-    if (!sessionsResponse.ok) throw new Error('Failed to fetch sessions from OpenF1')
+    if (!sessionsResponse.ok) throw new Error('Failed to fetch sessions')
 
     const allSessions = await sessionsResponse.json()
-    console.log(`[FERRARI YEAR] Got ${allSessions.length} sessions for year ${year}`)
+    console.log(`[BG] Got ${allSessions.length} sessions`)
 
-    const allResults = []
-    let sessionsProcessed = 0
-    let sessionsWithFerrari = 0
+    let saved = 0
 
     // Process each session
     for (const session of allSessions) {
-      sessionsProcessed++
-
       try {
         if (!session.session_key || !session.meeting_key) continue
 
-        // Fetch all drivers for this session
+        // Fetch all drivers
         const driversUrl = `https://api.openf1.org/v1/drivers?session_key=${session.session_key}&meeting_key=${session.meeting_key}`
         const driversResponse = await fetch(driversUrl)
         if (!driversResponse.ok) continue
@@ -155,16 +168,13 @@ router.get('/ferrari-year/:year', async (req, res) => {
         const allDrivers = await driversResponse.json()
 
         // Filter for Ferrari
-        const ferrariDrivers = allDrivers.filter(driver =>
-          driver.team_name && driver.team_name.toLowerCase() === 'ferrari'
+        const ferrariDrivers = allDrivers.filter(d =>
+          d.team_name && d.team_name.toLowerCase() === 'ferrari'
         )
 
         if (ferrariDrivers.length === 0) continue
 
-        sessionsWithFerrari++
-        console.log(`[FERRARI YEAR] Session ${sessionsProcessed}: Found ${ferrariDrivers.length} Ferrari driver(s)`)
-
-        // Fetch result for each Ferrari driver
+        // Fetch results
         for (const driver of ferrariDrivers) {
           try {
             const resultUrl = `https://api.openf1.org/v1/session_result?session_key=${session.session_key}&meeting_key=${session.meeting_key}&driver_number=${driver.driver_number}`
@@ -176,8 +186,8 @@ router.get('/ferrari-year/:year', async (req, res) => {
 
             const resultData = resultArray[0]
 
-            // Create result object
-            const result = {
+            // Save to MongoDB
+            await RaceResult.create({
               session_key: session.session_key,
               meeting_key: session.meeting_key,
               session_type: session.session_type,
@@ -188,33 +198,22 @@ router.get('/ferrari-year/:year', async (req, res) => {
               driver_number: driver.driver_number,
               number_of_laps: resultData.number_of_laps,
               final_position: resultData.position
-            }
-
-            allResults.push(result)
-            console.log(`[FERRARI YEAR]   ✓ ${driver.full_name}: Position ${resultData.position}`)
-
-            // Save to MongoDB
-            try {
-              await RaceResult.create(result)
-            } catch (saveErr) {
-              console.warn(`[FERRARI YEAR] Warning saving to DB: ${saveErr.message}`)
-            }
-          } catch (err) {
-            console.error(`[FERRARI YEAR] Error processing driver:`, err.message)
+            })
+            saved++
+          } catch (e) {
+            console.error(`[BG] Error with driver: ${e.message}`)
           }
         }
-      } catch (err) {
-        console.error(`[FERRARI YEAR] Error processing session:`, err.message)
+      } catch (e) {
+        console.error(`[BG] Error with session: ${e.message}`)
       }
     }
 
-    console.log(`[FERRARI YEAR] Complete: ${sessionsProcessed} sessions, ${sessionsWithFerrari} with Ferrari, ${allResults.length} total results`)
-    res.json(allResults)
-  } catch (error) {
-    console.error('[FERRARI YEAR] Error:', error)
-    res.status(500).json({ error: 'Failed to fetch Ferrari results', details: error.message })
+    console.log(`[BG] Saved ${saved} results for year ${year}`)
+  } catch (err) {
+    console.error('[BG] Error:', err.message)
   }
-})
+}
 router.get('/ferrari-results/year/:year', async (req, res) => {
   try {
     const year = parseInt(req.params.year)
