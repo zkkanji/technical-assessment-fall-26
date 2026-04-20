@@ -57,161 +57,27 @@ function App() {
       setLoading(true)
       setError(null)
 
-      // STEP 1: Fetch ALL sessions for the selected year
-      const sessionsUrl = `http://localhost:3001/api/openf1/sessions?year=${year}`
-      console.log(`=== STARTING FETCH FOR YEAR ${year} ===`)
-      console.log(`Fetching ALL sessions for year ${year}...`)
+      console.log(`=== FETCHING FERRARI RESULTS FOR YEAR ${year} ===`)
 
-      const sessionsResponse = await fetch(sessionsUrl)
-      if (!sessionsResponse.ok) throw new Error('Failed to fetch sessions')
+      // Call backend endpoint which handles caching and OpenF1 API
+      const url = `http://localhost:3001/api/openf1/ferrari-year/${year}`
+      const response = await fetch(url)
 
-      const allSessionsData = await sessionsResponse.json()
-      console.log(`✓ Got ${allSessionsData.length} total sessions for year ${year}`)
-
-      if (!allSessionsData || allSessionsData.length === 0) {
-        setError('No sessions found for this year')
-        setLoading(false)
-        return
+      if (!response.ok) {
+        throw new Error(`Backend returned ${response.status}`)
       }
 
-      const allResults = []
-      let sessionsWithFerrari = 0
-      let sessionsProcessed = 0
-      let driversFetched = 0
-      let driversFailed = 0
-      let resultsFetched = 0
-      let resultsFailed = 0
+      const results = await response.json()
 
-      // Process each session
-      for (const session of allSessionsData) {
-        sessionsProcessed++
+      console.log(`✓ Received ${results.length} Ferrari results for year ${year}`)
+      console.log(`Results:`, results)
 
-        try {
-          if (!session.session_key || !session.meeting_key) {
-            console.warn(`Session ${sessionsProcessed}: Missing session_key or meeting_key`)
-            continue
-          }
-
-          // STEP 2: Fetch Ferrari drivers for this session
-          const driversUrl = `http://localhost:3001/api/openf1/drivers?session_key=${session.session_key}&meeting_key=${session.meeting_key}&team_name=Ferrari`
-
-          let driversResponse
-          try {
-            driversResponse = await fetch(driversUrl)
-          } catch (fetchErr) {
-            console.error(`Session ${sessionsProcessed}: Network error fetching drivers:`, fetchErr.message)
-            driversFailed++
-            continue
-          }
-
-          if (!driversResponse.ok) {
-            console.log(`Session ${sessionsProcessed} (${session.session_key}): Drivers API returned ${driversResponse.status}`)
-            driversFailed++
-            continue
-          }
-
-          let drivers
-          try {
-            drivers = await driversResponse.json()
-            driversFetched++
-          } catch (parseErr) {
-            console.error(`Session ${sessionsProcessed}: Error parsing drivers JSON:`, parseErr.message)
-            driversFailed++
-            continue
-          }
-
-          // If no Ferrari drivers, skip this session
-          if (!drivers || drivers.length === 0) {
-            continue
-          }
-
-          sessionsWithFerrari++
-          console.log(`Session ${sessionsProcessed} (${session.session_key}): Found ${drivers.length} Ferrari driver(s)`)
-
-          // STEP 3: Fetch session result for each driver
-          for (const driver of drivers) {
-            if (!driver.driver_number || !driver.full_name) {
-              console.warn(`Session ${sessionsProcessed}: Driver missing driver_number or full_name`)
-              continue
-            }
-
-            try {
-              const resultUrl = `http://localhost:3001/api/openf1/session-result?session_key=${session.session_key}&meeting_key=${session.meeting_key}&driver_number=${driver.driver_number}`
-
-              let resultResponse
-              try {
-                resultResponse = await fetch(resultUrl)
-              } catch (fetchErr) {
-                console.error(`  → Driver ${driver.full_name}: Network error:`, fetchErr.message)
-                resultsFailed++
-                continue
-              }
-
-              if (!resultResponse.ok) {
-                console.log(`  → Driver ${driver.full_name} (${driver.driver_number}): Result API returned ${resultResponse.status}`)
-                resultsFailed++
-                continue
-              }
-
-              let result
-              try {
-                result = await resultResponse.json()
-                resultsFetched++
-              } catch (parseErr) {
-                console.error(`  → Driver ${driver.full_name}: Error parsing result JSON:`, parseErr.message)
-                resultsFailed++
-                continue
-              }
-
-              console.log(`  → Driver ${driver.full_name}: Fetched result:`, result)
-
-              if (result && result.length > 0) {
-                const resultData = result[0]
-                console.log(`    Data found - Position: ${resultData.position}, Laps: ${resultData.number_of_laps}`)
-                allResults.push({
-                  session_type: session.session_type,
-                  circuit_short_name: session.circuit_short_name,
-                  date_end: session.date_end,
-                  number_of_laps: resultData.number_of_laps,
-                  final_position: resultData.position,
-                  driver_name: driver.full_name,
-                  driver_number: driver.driver_number,
-                  session_key: session.session_key,
-                  meeting_key: session.meeting_key
-                })
-                console.log(`  ✓ Driver ${driver.full_name}: Added to results (total: ${allResults.length})`)
-              } else {
-                console.log(`    No data in result array (length: ${result?.length || 0})`)
-              }
-            } catch (err) {
-              console.error(`  ✗ Unexpected error for driver ${driver.driver_number}:`, err.message)
-              resultsFailed++
-              continue
-            }
-          }
-        } catch (err) {
-          console.error(`Session ${sessionsProcessed}: Unexpected error:`, err.message)
-          continue
-        }
-      }
-
-      console.log(`=== FETCH COMPLETE ===`)
-      console.log(`Sessions processed: ${sessionsProcessed}`)
-      console.log(`Sessions with Ferrari drivers: ${sessionsWithFerrari}`)
-      console.log(`Drivers fetch attempts: ${driversFetched} success, ${driversFailed} failed`)
-      console.log(`Results fetch attempts: ${resultsFetched} success, ${resultsFailed} failed`)
-      console.log(`Total Ferrari results collected: ${allResults.length}`)
-
-      if (allResults.length === 0) {
+      if (!results || results.length === 0) {
         setError(`No Ferrari results found for year ${year}`)
       }
 
-      setAllAccumulatedResults(allResults)
-      setCurrentPageResults(allResults)
-      console.log(`✓ State updated:`)
-      console.log(`  allAccumulatedResults.length = ${allResults.length}`)
-      console.log(`  currentPageResults.length = ${allResults.length}`)
-      console.log(`  First result:`, allResults[0])
+      setAllAccumulatedResults(results)
+      setCurrentPageResults(results)
       setLoading(false)
     } catch (err) {
       console.error('Error fetching data:', err)
