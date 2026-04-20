@@ -243,3 +243,5 @@ router.post('/ferrari-results', async (req, res) => {
     res.status(500).json({ error: 'Failed to save Ferrari result', details: error.message })
   }
 })
+
+export default router
