@@ -58,43 +58,67 @@ function App() {
 
       // STEP 1: Fetch ALL sessions for the selected year
       const sessionsUrl = `http://localhost:3001/api/openf1/sessions?year=${year}`
+      console.log(`=== STARTING FETCH FOR YEAR ${year} ===`)
       console.log(`Fetching ALL sessions for year ${year}...`)
 
       const sessionsResponse = await fetch(sessionsUrl)
       if (!sessionsResponse.ok) throw new Error('Failed to fetch sessions')
 
       const allSessionsData = await sessionsResponse.json()
-      console.log(`Got ${allSessionsData.length} total sessions for year ${year}`)
+      console.log(`✓ Got ${allSessionsData.length} total sessions for year ${year}`)
+
+      if (!allSessionsData || allSessionsData.length === 0) {
+        setError('No sessions found for this year')
+        setLoading(false)
+        return
+      }
 
       const allResults = []
+      let sessionsWithFerrari = 0
+      let sessionsProcessed = 0
 
       // Process each session
       for (const session of allSessionsData) {
+        sessionsProcessed++
+
         try {
+          if (!session.session_key || !session.meeting_key) {
+            console.warn(`Session ${sessionsProcessed}: Missing session_key or meeting_key`)
+            continue
+          }
+
           // STEP 2: Fetch Ferrari drivers for this session
           const driversUrl = `http://localhost:3001/api/openf1/drivers?session_key=${session.session_key}&meeting_key=${session.meeting_key}&team_name=Ferrari`
 
           const driversResponse = await fetch(driversUrl)
           if (!driversResponse.ok) {
-            console.warn(`No drivers response for session ${session.session_key}`)
+            console.log(`Session ${sessionsProcessed} (${session.session_key}): No drivers response`)
             continue
           }
 
           const drivers = await driversResponse.json()
 
           // If no Ferrari drivers, skip this session
-          if (drivers.length === 0) {
+          if (!drivers || drivers.length === 0) {
             continue
           }
 
+          sessionsWithFerrari++
+          console.log(`Session ${sessionsProcessed} (${session.session_key}): Found ${drivers.length} Ferrari driver(s)`)
+
           // STEP 3: Fetch session result for each driver
           for (const driver of drivers) {
+            if (!driver.driver_number || !driver.full_name) {
+              console.warn(`Session ${sessionsProcessed}: Driver missing driver_number or full_name`)
+              continue
+            }
+
             try {
               const resultUrl = `http://localhost:3001/api/openf1/session-result?session_key=${session.session_key}&meeting_key=${session.meeting_key}&driver_number=${driver.driver_number}`
 
               const resultResponse = await fetch(resultUrl)
               if (!resultResponse.ok) {
-                console.warn(`No result found for driver ${driver.driver_number}`)
+                console.log(`  → Driver ${driver.full_name} (${driver.driver_number}): No result found`)
                 continue
               }
 
@@ -113,19 +137,27 @@ function App() {
                   session_key: session.session_key,
                   meeting_key: session.meeting_key
                 })
+                console.log(`  ✓ Driver ${driver.full_name}: Position ${resultData.position}, Laps ${resultData.number_of_laps}`)
               }
             } catch (err) {
-              console.error(`Error fetching result for driver ${driver.driver_number}:`, err)
+              console.error(`  ✗ Error fetching result for driver ${driver.driver_number}:`, err.message)
               continue
             }
           }
         } catch (err) {
-          console.error(`Error processing session ${session.session_key}:`, err)
+          console.error(`Session ${sessionsProcessed}: Error processing session ${session.session_key}:`, err.message)
           continue
         }
       }
 
-      console.log(`Total Ferrari results for year ${year}: ${allResults.length}`)
+      console.log(`=== FETCH COMPLETE ===`)
+      console.log(`Sessions processed: ${sessionsProcessed}`)
+      console.log(`Sessions with Ferrari drivers: ${sessionsWithFerrari}`)
+      console.log(`Total Ferrari results collected: ${allResults.length}`)
+
+      if (allResults.length === 0) {
+        setError(`No Ferrari results found for year ${year}`)
+      }
 
       setAllAccumulatedResults(allResults)
       setCurrentPageResults(allResults)
